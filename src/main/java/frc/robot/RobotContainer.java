@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.SwerveTeleCMD;
 import frc.robot.subsystems.Swerve;
+import frc.robot.subsystems.SwerveBase;
 import frc.robot.subsystems.SwerveSim;
 
 /**
@@ -20,7 +21,7 @@ import frc.robot.subsystems.SwerveSim;
  */
 
 public class RobotContainer {
-  public Swerve swerve;
+  public SwerveBase swerve;
   public CommandXboxController driver = new CommandXboxController(0);
   // The robot's subsystems and commands are defined here...
 

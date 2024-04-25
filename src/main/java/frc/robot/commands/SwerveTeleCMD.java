@@ -13,7 +13,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Swerve;
+import frc.robot.subsystems.SwerveBase;
 import frc.robot.util.SlewRateLimiter;
 
 public class SwerveTeleCMD extends Command {
@@ -53,7 +53,7 @@ public class SwerveTeleCMD extends Command {
         public static final double angularVelocityLimit = 180.0;
         public static final double slowAngularVelocityLimit = 45.0;
     }
-    private Swerve s_Swerve;
+    private SwerveBase s_Swerve;
 
     private DoubleSupplier translationSup;
     private DoubleSupplier strafeSup;
@@ -70,7 +70,7 @@ public class SwerveTeleCMD extends Command {
     }
 
     public SwerveTeleCMD(
-        Swerve s_Swerve,
+        SwerveBase s_Swerve,
         DoubleSupplier translationSup,
         DoubleSupplier strafeSup,
         DoubleSupplier rotationSup,

@@ -4,26 +4,26 @@
 
 package frc.robot.subsystems;
 
-import com.choreo.lib.*;
+import java.util.Arrays;
+
 import com.kauailabs.navx.frc.AHRS;
-import edu.wpi.first.math.controller.PIDController;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.*;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
 import frc.robot.util.SwerveModuleConfig;
-import java.util.Arrays;
-import java.util.Optional;
 
-public class Swerve extends SubsystemBase {
+public class Swerve extends SwerveBase {
 
     public class Constants {
 
@@ -41,13 +41,6 @@ public class Swerve extends SubsystemBase {
             new Translation2d(-kWheelBase / 2.0, kTrackWidth / 2.0),
             new Translation2d(-kWheelBase / 2.0, -kTrackWidth / 2.0)
         );
-
-        private class AutoConstants {
-
-            static double kPXController = 1;
-            static double kPYController = kPXController;
-            static double kPThetaController = 1;
-        }
     }
 
     /* Array of Modules */
@@ -69,48 +62,12 @@ public class Swerve extends SubsystemBase {
             gyro = new AHRS(SPI.Port.kMXP);
             zeroGyro();
 
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsX", 1);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsY", 2);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsO", 3);
-
-        // SmartDashboard.putNumber("PP X", 4);
-        // SmartDashboard.putNumber("PP Y", 5);
-        // SmartDashboard.putNumber("PP O", 6);
-        odometer = new SwerveDriveOdometry(Constants.kinematics, getYaw(), getModulePositions());
-
-        ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
-
-        Command trajectory = Choreo.choreoSwerveCommand(
-            traj, //
-            this::getPose, //
-            new PIDController(Constants.AutoConstants.kPXController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPYController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPThetaController, 0.0, 0.0), //
-            (ChassisSpeeds speeds) -> //
-                this.drive(
-                        new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond),
-                        new Rotation2d(speeds.omegaRadiansPerSecond),
-                        false,
-                        true
-                    ),
-            () -> {
-                Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
-                return alliance.isPresent() && alliance.get() == Alliance.Red;
-            }, //
-            this //
-        );
-
-        chassisSpeeds = new ChassisSpeeds();
-        // SmartDashboard.putData(field);
+            odometer = new SwerveDriveOdometry(Constants.kinematics, getYaw(), getModulePositions());
     }
 
     @Override
-    public void periodic() {
-        odometer.update(gyro.getRotation2d(), getModulePositions());
-
-        if (Constants.diagnosticMode) {
-            sendSmartDashboardDiagnostics();
-        }
+    public void periodic(){
+        odometer.update(getYaw(), getModulePositions());
     }
 
     /**
