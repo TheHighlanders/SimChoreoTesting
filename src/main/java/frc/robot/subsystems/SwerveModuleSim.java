@@ -104,11 +104,11 @@ public class SwerveModuleSim extends SwerveModule{
      * @return Swerve Module Position (Position & Angle)
      */
     public SwerveModulePosition getPosition() {
-        SwerveModulePosition p = new SwerveModulePosition(-getDrivePosition(), getAnglePosition());
-        if(p == null){
-            p = new SwerveModulePosition(0,new Rotation2d());
-        }
-        return p;
+        // SwerveModulePosition p = new SwerveModulePosition(-getDrivePosition(), getAnglePosition());
+        // if(p == null){
+            // p = new SwerveModulePosition(0,new Rotation2d());
+        // }
+        return new SwerveModulePosition(0,new Rotation2d());
     }
 
     /**

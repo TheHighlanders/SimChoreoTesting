@@ -85,7 +85,6 @@ public class Swerve extends SubsystemBase {
         // SmartDashboard.putNumber("PP X", 4);
         // SmartDashboard.putNumber("PP Y", 5);
         // SmartDashboard.putNumber("PP O", 6);
-
         odometer = new SwerveDriveOdometry(Constants.kinematics, getYaw(), getModulePositions());
 
         ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
@@ -191,6 +190,7 @@ public class Swerve extends SubsystemBase {
     public SwerveModulePosition[] getModulePositions() {
         SwerveModulePosition[] positions = new SwerveModulePosition[4];
         for (SwerveModule mod : modules) {
+            DriverStation.reportWarning("" + mod.moduleNumber, false);
             positions[mod.moduleNumber] = mod.getPosition();
         }
         return positions;
