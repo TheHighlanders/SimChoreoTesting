@@ -4,26 +4,32 @@
 
 package frc.robot.subsystems;
 
-import com.choreo.lib.*;
+import java.util.Arrays;
+import java.util.Optional;
+
+import com.choreo.lib.Choreo;
+import com.choreo.lib.ChoreoTrajectory;
 import com.kauailabs.navx.frc.AHRS;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.*;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
 import frc.robot.util.SwerveModuleConfig;
-import java.util.Arrays;
-import java.util.Optional;
 
-public class Swerve extends SubsystemBase {
+public class SwerveSim extends Swerve{
 
     public class Constants {
 
@@ -51,31 +57,23 @@ public class Swerve extends SubsystemBase {
     }
 
     /* Array of Modules */
-    public SwerveModule[] modules;
+    public SwerveModuleSim[] modules;
     private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
 
     public SwerveDriveOdometry odometer;
+    public Field2d field;
 
-    public Swerve() {
+    public SwerveSim() {
         /* Initializes modules from Constants */
             modules =
-                new SwerveModule[] {
-                    new SwerveModule(0, Constants.FL),
-                    new SwerveModule(1, Constants.FR),
-                    new SwerveModule(2, Constants.BL),
-                    new SwerveModule(3, Constants.BR),
+                new SwerveModuleSim[] {
+                    new SwerveModuleSim(0),
+                    new SwerveModuleSim(1),
+                    new SwerveModuleSim(2),
+                    new SwerveModuleSim(3),
                 };
-            gyro = new AHRS(SPI.Port.kMXP);
-            zeroGyro();
 
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsX", 1);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsY", 2);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsO", 3);
-
-        // SmartDashboard.putNumber("PP X", 4);
-        // SmartDashboard.putNumber("PP Y", 5);
-        // SmartDashboard.putNumber("PP O", 6);
         odometer = new SwerveDriveOdometry(Constants.kinematics, getYaw(), getModulePositions());
 
         ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
@@ -99,15 +97,15 @@ public class Swerve extends SubsystemBase {
             }, //
             this //
         );
-
+        field = new Field2d();
         chassisSpeeds = new ChassisSpeeds();
-        // SmartDashboard.putData(field);
+        SmartDashboard.putData(field);
     }
 
     @Override
     public void periodic() {
         odometer.update(gyro.getRotation2d(), getModulePositions());
-
+        field.setRobotPose(getPose());
         if (Constants.diagnosticMode) {
             sendSmartDashboardDiagnostics();
         }
@@ -131,8 +129,8 @@ public class Swerve extends SubsystemBase {
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.kMaxSpeed);
 
-        for (SwerveModule m : modules) {
-            m.setModuleState(swerveModuleStates[m.moduleNumber], isOpenLoop); //WHY WHY WHY
+        for (SwerveModuleSim m : modules) {
+            m.setModuleState(swerveModuleStates[m.moduleNumber]); //WHY WHY WHY
         }
     }
 
@@ -143,8 +141,8 @@ public class Swerve extends SubsystemBase {
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.kMaxSpeed);
 
-        for (SwerveModule m : modules) {
-            m.setModuleState(swerveModuleStates[m.moduleNumber], true);
+        for (SwerveModuleSim m : modules) {
+            m.setModuleState(swerveModuleStates[m.moduleNumber]);
         }
     }
 
@@ -180,7 +178,7 @@ public class Swerve extends SubsystemBase {
      */
     public SwerveModulePosition[] getModulePositions() {
         SwerveModulePosition[] positions = new SwerveModulePosition[4];
-        for (SwerveModule mod : modules) {
+        for (SwerveModuleSim mod : modules) {
             DriverStation.reportWarning("" + mod.moduleNumber, false);
             positions[mod.moduleNumber] = mod.getPosition();
         }
@@ -209,31 +207,18 @@ public class Swerve extends SubsystemBase {
      */
     public SwerveModuleState[] getStates() {
         SwerveModuleState[] states = new SwerveModuleState[4];
-        for (SwerveModule mod : modules) {
+        for (SwerveModuleSim mod : modules) {
             states[mod.moduleNumber] = mod.getState();
         }
         return states;
-    }
-
-    public void resetAllModulestoAbsol() {
-        for (SwerveModule m : modules) {
-            m.setIntegratedAngleToAbsolute();
-        }
-    }
-
-    public void resetAllModules() {
-        for (SwerveModule m : modules) {
-            m.configureAngleMotor();
-            m.configureDriveMotor();
-        }
     }
 
     /**
      *  Sends actual angle encoder data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendAngleTargetDiagnostic()
      */
     public void sendAngleDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Angle Actual", m.angleEncoder.getPosition());
+        for (SwerveModuleSim m : modules) {
+            SmartDashboard.putNumber("Module " + m.moduleNumber + " Angle Actual", m.getAnglePosition().getDegrees());
         }
     }
 
@@ -241,8 +226,8 @@ public class Swerve extends SubsystemBase {
      *  Sends angle PID target data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendAngleDiagnostic()
      */
     public void sendAngleTargetDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Angle Target", m.angleReference);
+        for (SwerveModuleSim m : modules) {
+            SmartDashboard.putNumber("Module " + m.moduleNumber + " Angle Target", m.anglePID.getSetpoint());
         }
     }
 
@@ -251,10 +236,10 @@ public class Swerve extends SubsystemBase {
      */
     public void sendDriveDiagnostic() {
         double[] wheelSpeeds = new double[4];
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Position Drive Actual", m.driveEncoder.getPosition());
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Velocity Actual", m.driveEncoder.getVelocity());
-            wheelSpeeds[m.driveMotor.getDeviceId() / 10] = m.driveEncoder.getVelocity();
+        for (SwerveModuleSim m : modules) {
+            SmartDashboard.putNumber("Module " + m.moduleNumber + " Position Drive Actual", m.getDrivePosition());
+            SmartDashboard.putNumber("Module " + m.moduleNumber + " Velocity Actual", m.getDriveVelocity());
+            wheelSpeeds[m.moduleNumber] = m.getDriveVelocity();
         }
 
         SmartDashboard.putNumber(
@@ -267,26 +252,16 @@ public class Swerve extends SubsystemBase {
      *  Sends drive PID target data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendDriveDiagnostic()
      */
     public void sendDriveTargetDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Velocity Target", m.driveReference);
+        for (SwerveModuleSim m : modules) {
+            SmartDashboard.putNumber("Module " + m.moduleNumber + " Velocity Target", m.drivePID.getSetpoint());
         }
     }
-
-    public void sendAbsoluteDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Absolute", m.getAbsolutePositionNoOffset().getDegrees());
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Absolute Offsetted", m.getAbsolutePosition().getDegrees());
-        }
-    }
-
     public void sendSmartDashboardDiagnostics() {
         sendAngleDiagnostic();
         sendAngleTargetDiagnostic();
 
         sendDriveDiagnostic();
         // sendDriveTargetDiagnostic();
-
-        sendAbsoluteDiagnostic();
 
         SmartDashboard.putNumber("NavX Angle", getYaw().getDegrees());
         SmartDashboard.putNumber("Pose X", getPose().getX());
@@ -296,11 +271,11 @@ public class Swerve extends SubsystemBase {
 
     public void jogSingleModule(int moduleNumber, double input, boolean drive) {
         if (drive) {
-            modules[moduleNumber].setDriveState(new SwerveModuleState(input, new Rotation2d(0)), false);
-            DriverStation.reportWarning(modules[moduleNumber].driveMotor.getDeviceId() + "", false);
+            modules[moduleNumber].setDriveState(new SwerveModuleState(input, new Rotation2d(0)));
+            DriverStation.reportWarning(moduleNumber+"", false);
         } else {
             modules[moduleNumber].setAngleState(new SwerveModuleState(0, new Rotation2d(Math.toRadians(input))));
-            DriverStation.reportWarning(modules[moduleNumber].angleMotor.getDeviceId() + "", false);
+            DriverStation.reportWarning(moduleNumber +"", false);
         }
     }
 

@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.SwerveTeleCMD;
 import frc.robot.subsystems.Swerve;
+import frc.robot.subsystems.SwerveSim;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -19,7 +20,7 @@ import frc.robot.subsystems.Swerve;
  */
 
 public class RobotContainer {
-  public Swerve swerve = new Swerve();
+  public Swerve swerve;
   public CommandXboxController driver = new CommandXboxController(0);
   // The robot's subsystems and commands are defined here...
 
@@ -27,16 +28,13 @@ public class RobotContainer {
   public RobotContainer() {
     // Configure the trigger bindings
     configureBindings();
-    swerve.setDefaultCommand(
-      new SwerveTeleCMD(
-          swerve,
-          () -> -driver.getRawAxis(0),
-          () -> -driver.getRawAxis(1),
-          () -> driver.getRawAxis(2),
-          driver.povDown(),
-          driver.leftBumper()
-      )
-  );
+    if(Robot.isReal()){
+      swerve = new Swerve();
+    } else {
+      swerve = new SwerveSim();
+    }
+    bindDefaultCommands();
+
   }
 
   /**
@@ -59,5 +57,17 @@ public class RobotContainer {
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
     return new SequentialCommandGroup();
+  }
+  public void bindDefaultCommands(){
+    swerve.setDefaultCommand(
+      new SwerveTeleCMD(
+          swerve,
+          () -> -driver.getRawAxis(0),
+          () -> -driver.getRawAxis(1),
+          () -> driver.getRawAxis(2),
+          driver.povDown(),
+          driver.leftBumper()
+      )
+    );
   }
 }

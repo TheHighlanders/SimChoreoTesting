@@ -4,8 +4,6 @@ import com.revrobotics.CANSparkBase.ControlType;
 import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
-import java.sql.Driver;
-
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkAbsoluteEncoder;
@@ -70,7 +68,6 @@ public class SwerveModule {
     private Rotation2d KModuleAbsoluteOffset;
 
     // private Rotation2d lastAngle;
-    public SwerveModule(){}
     public SwerveModule(int moduleNumber, SwerveModuleConfig config) {
         this.moduleNumber = moduleNumber;
 

@@ -12,7 +12,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
-public class SwerveModuleSim extends SwerveModule{
+public class SwerveModuleSim{
     public class Constants{
         static double kSDrive = 1;
         static double kVDrive = 1;
@@ -119,7 +119,7 @@ public class SwerveModuleSim extends SwerveModule{
         return new SwerveModuleState(getDriveVelocity(), getAnglePosition());
     }
 
-    public void setState(SwerveModuleState state){
+    public void setModuleState(SwerveModuleState state){
         setDriveState(state);
         setAngleState(state);
     }
