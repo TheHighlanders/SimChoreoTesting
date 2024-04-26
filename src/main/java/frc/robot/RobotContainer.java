@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -48,6 +49,7 @@ public class RobotContainer {
    * joysticks}.
    */
   private void configureBindings() {
+    DriverStation.silenceJoystickConnectionWarning(true);
   }
 
   /**
@@ -63,7 +65,7 @@ public class RobotContainer {
     swerve.setDefaultCommand(
       new SwerveTeleCMD(
           swerve,
-          () -> -driver.getRawAxis(0),
+          () -> driver.getRawAxis(0),
           () -> -driver.getRawAxis(1),
           () -> driver.getRawAxis(2),
           driver.povDown(),

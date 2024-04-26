@@ -5,6 +5,7 @@ import com.revrobotics.SparkPIDController;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
@@ -14,16 +15,16 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
 public class SwerveModuleSim{
     public class Constants{
-        static double kSDrive = 1;
-        static double kVDrive = 1;
-        static double kADrive = 1;
-        static double kPDrive = 1;
+        static double kSDrive = 0;
+        static double kVDrive = 0;
+
+        static double kPDrive = 10;
         static double kIDrive = 0;
         static double kDDrive = 0;
 
-        static double kPAngle = 1;
+        static double kPAngle = 10;
         static double kIAngle = 0;
-        static double kDAngle = 0;
+        static double kDAngle = 1;
 
         public static final double kDriveGearRatio = 1.0f / 8.14f;
         public static final double kAngleGearRatio = 1.0f / 12.8f;
@@ -56,7 +57,7 @@ public class SwerveModuleSim{
     
     public PIDController drivePID = new PIDController(Constants.kPDrive, Constants.kIDrive, Constants.kDDrive);
     public PIDController anglePID = new PIDController(Constants.kPAngle, Constants.kIAngle, Constants.kDAngle);
-
+    public SimpleMotorFeedforward driveFF = new SimpleMotorFeedforward(Constants.kSDrive, Constants.kVDrive);
 
     public SwerveModuleSim(int moduleNumber) {
         this.moduleNumber = moduleNumber;
@@ -104,11 +105,8 @@ public class SwerveModuleSim{
      * @return Swerve Module Position (Position & Angle)
      */
     public SwerveModulePosition getPosition() {
-        // SwerveModulePosition p = new SwerveModulePosition(-getDrivePosition(), getAnglePosition());
-        // if(p == null){
-            // p = new SwerveModulePosition(0,new Rotation2d());
-        // }
-        return new SwerveModulePosition(0,new Rotation2d());
+        SwerveModulePosition p = new SwerveModulePosition(-getDrivePosition(), getAnglePosition());
+        return p;
     }
 
     /**
@@ -126,7 +124,7 @@ public class SwerveModuleSim{
 
     public void setDriveState(SwerveModuleState state){
         drivePID.setSetpoint(state.speedMetersPerSecond);
-        driveMotor.setInput(MathUtil.clamp(drivePID.calculate(getDriveVelocity()), -12.0, 12.0));
+        driveMotor.setInput(MathUtil.clamp(drivePID.calculate(getDriveVelocity())+driveFF.calculate(state.speedMetersPerSecond), -12.0, 12.0));
     }
 
     public void setAngleState(SwerveModuleState state){
