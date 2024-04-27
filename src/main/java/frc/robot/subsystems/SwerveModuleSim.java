@@ -22,8 +22,8 @@ public class SwerveModuleSim{
         static double kIDrive = 0;
         static double kDDrive = 0;
 
-        static double kPAngle = 10;
-        static double kIAngle = 0;
+        static double kPAngle = 100;
+        static double kIAngle = 0.1;
         static double kDAngle = 1;
 
         public static final double kDriveGearRatio = 1.0f / 8.14f;
@@ -81,6 +81,10 @@ public class SwerveModuleSim{
         return new Rotation2d(angleMotor.getAngularPositionRad());
     }
 
+    public Rotation2d getAngleSetpoint() {
+        return Rotation2d.fromDegrees(anglePID.getSetpoint());
+    }
+
     /**
      * Returns the velocity of the Drive Motor, measured with integrated encoder
      *
@@ -123,13 +127,11 @@ public class SwerveModuleSim{
     }
 
     public void setDriveState(SwerveModuleState state){
-        drivePID.setSetpoint(state.speedMetersPerSecond);
-        driveMotor.setInput(MathUtil.clamp(drivePID.calculate(getDriveVelocity())+driveFF.calculate(state.speedMetersPerSecond), -12.0, 12.0));
+        driveMotor.setInput(MathUtil.clamp(drivePID.calculate(getDriveVelocity(),state.speedMetersPerSecond) + driveFF.calculate(state.speedMetersPerSecond), -12.0, 12.0));
     }
 
     public void setAngleState(SwerveModuleState state){
-        anglePID.setSetpoint(state.angle.getDegrees());
-        angleMotor.setInput(MathUtil.clamp(anglePID.calculate(getAnglePosition().getDegrees()), -12.0, 12.0));
+        angleMotor.setInput(MathUtil.clamp(anglePID.calculate(getAnglePosition().getDegrees(), state.angle.getDegrees()), -12.0, 12.0));
     }
 
     /**

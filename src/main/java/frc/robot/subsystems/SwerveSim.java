@@ -8,7 +8,6 @@ import java.util.Arrays;
 
 import com.kauailabs.navx.frc.AHRS;
 
-import edu.wpi.first.math.estimator.SteadyStateKalmanFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -18,11 +17,10 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.SwerveModuleConfig;
@@ -52,6 +50,9 @@ public class SwerveSim extends SwerveBase{
     private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
     private StructArrayPublisher<SwerveModuleState> statePublisher;
+    private DoublePublisher anglePublisher;
+        private DoublePublisher anglespPublisher;
+
 
     public SwerveDriveOdometry odometer;
     public Field2d field;
@@ -69,12 +70,16 @@ public class SwerveSim extends SwerveBase{
         field = new Field2d();
         SmartDashboard.putData(field);
         statePublisher = NetworkTableInstance.getDefault().getStructArrayTopic("/SwerveStates", SwerveModuleState.struct).publish();
+        anglePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngles").publish();
+        anglespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAnglesSetpoints").publish();
     }
     @Override
     public void periodic(){
         odometer.update(getYaw(), getModulePositions());
         field.setRobotPose(odometer.getPoseMeters());
         statePublisher.set(getStates());
+        anglePublisher.set(modules[0].getAnglePosition().getDegrees());
+        anglespPublisher.set(modules[0].getAngleSetpoint().getDegrees());
         updateAllModules();
     }
 
