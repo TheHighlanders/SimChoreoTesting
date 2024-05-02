@@ -15,16 +15,16 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
 public class SwerveModuleSim{
     public class Constants{
-        static double kSDrive = 0;
-        static double kVDrive = 0;
+        static double kSDrive = 6.5;
+        static double kVDrive = 0.5;
 
-        static double kPDrive = 10;
+        static double kPDrive = 25;
         static double kIDrive = 0;
         static double kDDrive = 0;
 
-        static double kPAngle = 100;
-        static double kIAngle = 0.1;
-        static double kDAngle = 1;
+        static double kPAngle = .1;
+        static double kIAngle = 0;
+        static double kDAngle = 0;
 
         public static final double kDriveGearRatio = 1.0f / 8.14f;
         public static final double kAngleGearRatio = 1.0f / 12.8f;
@@ -102,7 +102,9 @@ public class SwerveModuleSim{
     public double getDrivePosition() {
         return driveMotor.getAngularPositionRotations() * (Math.PI * Units.inchesToMeters(4));
     }
-
+    public double getDriveSetpoint(){
+        return drivePID.getSetpoint();
+    }
 
     /**
      *

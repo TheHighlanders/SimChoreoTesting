@@ -8,12 +8,13 @@ import java.util.Arrays;
 
 import com.kauailabs.navx.frc.AHRS;
 
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
@@ -21,11 +22,12 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.SwerveModuleConfig;
 
-public class SwerveSim extends SwerveBase{
+public class SwerveSim extends SwerveBase {
 
     public class Constants {
 
@@ -38,11 +40,10 @@ public class SwerveSim extends SwerveBase{
         static double kTrackWidth = Units.inchesToMeters(24);
         static double kMaxSpeed = 5.0;
         public static final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(
-            new Translation2d(kWheelBase / 2.0, kTrackWidth / 2.0),
-            new Translation2d(kWheelBase / 2.0, -kTrackWidth / 2.0),
-            new Translation2d(-kWheelBase / 2.0, kTrackWidth / 2.0),
-            new Translation2d(-kWheelBase / 2.0, -kTrackWidth / 2.0)
-        );
+                new Translation2d(kWheelBase / 2.0, kTrackWidth / 2.0),
+                new Translation2d(kWheelBase / 2.0, -kTrackWidth / 2.0),
+                new Translation2d(-kWheelBase / 2.0, kTrackWidth / 2.0),
+                new Translation2d(-kWheelBase / 2.0, -kTrackWidth / 2.0));
     }
 
     /* Array of Modules */
@@ -51,35 +52,49 @@ public class SwerveSim extends SwerveBase{
     public ChassisSpeeds chassisSpeeds;
     private StructArrayPublisher<SwerveModuleState> statePublisher;
     private DoublePublisher anglePublisher;
-        private DoublePublisher anglespPublisher;
+    private DoublePublisher anglespPublisher;
+    private DoublePublisher drivePublisher;
+    private DoublePublisher drivespPublisher;
 
-
-    public SwerveDriveOdometry odometer;
+    public SwerveDrivePoseEstimator swervePoseEstimator;
+    private SwerveModulePosition[] lastModulePositions;
+    private Rotation2d rawGyroRotation = new Rotation2d();
     public Field2d field;
 
     public SwerveSim() {
         /* Initializes modules from Constants */
-            modules =
-                new SwerveModuleSim[] {
-                    new SwerveModuleSim(0),
-                    new SwerveModuleSim(1),
-                    new SwerveModuleSim(2),
-                    new SwerveModuleSim(3),
-                };
-        odometer = new SwerveDriveOdometry(Constants.kinematics, getYaw(), getModulePositions());
+        modules = new SwerveModuleSim[] {
+                new SwerveModuleSim(0),
+                new SwerveModuleSim(1),
+                new SwerveModuleSim(2),
+                new SwerveModuleSim(3),
+        };
+
+        swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), getModulePositions(),
+                new Pose2d());
+        lastModulePositions = getModulePositions();
+        
         field = new Field2d();
         SmartDashboard.putData(field);
-        statePublisher = NetworkTableInstance.getDefault().getStructArrayTopic("/SwerveStates", SwerveModuleState.struct).publish();
-        anglePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngles").publish();
-        anglespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAnglesSetpoints").publish();
+        statePublisher = NetworkTableInstance.getDefault()
+                .getStructArrayTopic("/SwerveStates", SwerveModuleState.struct).publish();
+        anglePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngle").publish();
+        anglespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngleSetpoints").publish();
+        drivePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveDrive").publish();
+        drivespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveDriveSetpoints").publish();
+
     }
+
     @Override
-    public void periodic(){
-        odometer.update(getYaw(), getModulePositions());
-        field.setRobotPose(odometer.getPoseMeters());
+    public void periodic() {
+        updateOdometry();
+        field.setRobotPose(swervePoseEstimator.getEstimatedPosition());
         statePublisher.set(getStates());
         anglePublisher.set(modules[0].getAnglePosition().getDegrees());
         anglespPublisher.set(modules[0].getAngleSetpoint().getDegrees());
+        drivePublisher.set(modules[0].getDriveVelocity());
+        drivespPublisher.set(modules[0].getDriveSetpoint());
+
         updateAllModules();
     }
 
@@ -92,9 +107,9 @@ public class SwerveSim extends SwerveBase{
      * @param isOpenLoop    Drive controller mode
      */
     public void drive(Translation2d translate, Rotation2d rotate, boolean fieldRelative, boolean isOpenLoop) {
-        chassisSpeeds =
-            fieldRelative
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(-translate.getX(), -translate.getY(), rotate.getRadians(), getYaw())
+        chassisSpeeds = fieldRelative
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(-translate.getX(), -translate.getY(), rotate.getRadians(),
+                        getYaw())
                 : new ChassisSpeeds(translate.getX(), translate.getY(), rotate.getRadians());
 
         SwerveModuleState[] swerveModuleStates = Constants.kinematics.toSwerveModuleStates(chassisSpeeds);
@@ -102,7 +117,9 @@ public class SwerveSim extends SwerveBase{
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.kMaxSpeed);
 
         for (SwerveModuleSim m : modules) {
-            m.setModuleState(swerveModuleStates[m.moduleNumber]); //WHY WHY WHY
+            m.setModuleState(SwerveModuleState.optimize(swerveModuleStates[m.moduleNumber], m.getAnglePosition())); // WHY
+                                                                                                                    // WHY
+                                                                                                                    // WHY
         }
     }
 
@@ -127,18 +144,38 @@ public class SwerveSim extends SwerveBase{
 
     // For PP
     public void resetPose(Pose2d pose) {
-        odometer.resetPosition(getYaw(), getModulePositions(), pose);
+        swervePoseEstimator.resetPosition(getYaw(), getModulePositions(), pose);
         // SmartDashboard.putNumber("ResetPoseX", pose.getX());
         // SmartDashboard.putNumber("ResetPoseY", pose.getY());
     }
 
-    /**
-     * Returns the gyro's yaw
-     *
-     * @return Yaw of gyro, includes zeroing
-     */
     public Rotation2d getYaw() {
-        return new Rotation2d(); //TODO: FIX THIS
+        return swervePoseEstimator.getEstimatedPosition().getRotation();
+    }
+
+    public void updateOdometry(){
+        double sampleTimestamp = Timer.getFPGATimestamp();
+        // Read wheel positions and deltas from each module
+        SwerveModulePosition[] modulePositions = getModulePositions();
+        SwerveModulePosition[] moduleDeltas = new SwerveModulePosition[4];
+        for (int moduleIndex = 0; moduleIndex < 4; moduleIndex++) {
+            moduleDeltas[moduleIndex] =
+             new SwerveModulePosition(
+                 modulePositions[moduleIndex].distanceMeters
+                      - lastModulePositions[moduleIndex].distanceMeters,
+                    modulePositions[moduleIndex].angle);
+            lastModulePositions[moduleIndex] = modulePositions[moduleIndex];
+                // 
+        }
+        // Use the angle delta from the kinematics and module delt
+        // s
+        Twist2d twist = Constants.kinematics.toTwist2d(moduleDeltas);
+        //
+        rawGyroRotation = rawGyroRotation.plus(new Rotation2d(twist.dtheta));
+    
+
+    // Apply update
+        swervePoseEstimator.updateWithTime(sampleTimestamp,rawGyroRotation,modulePositions);
     }
 
     /**
@@ -158,7 +195,7 @@ public class SwerveSim extends SwerveBase{
         // return new Pose2d(odometer.getPoseMeters().getTranslation(), new Rotation2d());
         // return odometer.getPoseMeters();
         // return swervePoseEstimator.getEstimatedPosition();
-        return odometer.getPoseMeters();
+        return swervePoseEstimator.getEstimatedPosition();
     }
 
     public ChassisSpeeds getRobotRelativeSpeeds() {

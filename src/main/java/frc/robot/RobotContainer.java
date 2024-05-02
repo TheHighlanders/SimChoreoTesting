@@ -67,7 +67,7 @@ public class RobotContainer {
           swerve,
           () -> driver.getRawAxis(0),
           () -> -driver.getRawAxis(1),
-          () -> driver.getRawAxis(2),
+          () -> driver.getRawAxis(4),
           driver.povDown(),
           driver.leftBumper()
       )

@@ -12,12 +12,12 @@ import com.choreo.lib.ChoreoTrajectory;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
@@ -26,7 +26,6 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Robot;
 import frc.robot.util.SwerveModuleConfig;
 
 public class SwerveBase extends SubsystemBase {
@@ -60,11 +59,14 @@ public class SwerveBase extends SubsystemBase {
     public SwerveModule[] modules;
     private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
-
-    public SwerveDriveOdometry odometer;
+    private SwerveModulePosition[] lastModulePositions;
+    private Rotation2d rawGyroRotation = new Rotation2d();
+    public SwerveDrivePoseEstimator swervePoseEstimator;
 
     public SwerveBase() {
         ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
+        lastModulePositions = new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()};
+        swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()}, new Pose2d());
 
         Command trajectory = Choreo.choreoSwerveCommand(
             traj, //
@@ -92,7 +94,6 @@ public class SwerveBase extends SubsystemBase {
 
     @Override
     public void periodic() {
-
         if (Constants.diagnosticMode) {
             sendSmartDashboardDiagnostics();
         }
@@ -142,7 +143,7 @@ public class SwerveBase extends SubsystemBase {
 
     // For PP
     public void resetPose(Pose2d pose) {
-        odometer.resetPosition(getYaw(), getModulePositions(), pose);
+        swervePoseEstimator.resetPosition(getYaw(), getModulePositions(), pose);
         // SmartDashboard.putNumber("ResetPoseX", pose.getX());
         // SmartDashboard.putNumber("ResetPoseY", pose.getY());
     }
@@ -153,9 +154,7 @@ public class SwerveBase extends SubsystemBase {
      * @return Yaw of gyro, includes zeroing
      */
     public Rotation2d getYaw() {
-        if(Robot.isReal()){
-            return Rotation2d.fromDegrees(-1 * gyro.getYaw());
-        } else return new Rotation2d(); //TODO: FIX THIS
+        return new Rotation2d(); //TODO: FIX THIS
     }
 
     /**
@@ -176,7 +175,7 @@ public class SwerveBase extends SubsystemBase {
         // return new Pose2d(odometer.getPoseMeters().getTranslation(), new Rotation2d());
         // return odometer.getPoseMeters();
         // return swervePoseEstimator.getEstimatedPosition();
-        return odometer.getPoseMeters();
+        return swervePoseEstimator.getEstimatedPosition();
     }
 
     public ChassisSpeeds getRobotRelativeSpeeds() {
