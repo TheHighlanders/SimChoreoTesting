@@ -21,6 +21,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -55,6 +56,7 @@ public class SwerveSim extends SwerveBase {
     private DoublePublisher anglespPublisher;
     private DoublePublisher drivePublisher;
     private DoublePublisher drivespPublisher;
+    private StructPublisher<Pose2d> posePublisher;
 
     public SwerveDrivePoseEstimator swervePoseEstimator;
     private SwerveModulePosition[] lastModulePositions;
@@ -78,10 +80,11 @@ public class SwerveSim extends SwerveBase {
         SmartDashboard.putData(field);
         statePublisher = NetworkTableInstance.getDefault()
                 .getStructArrayTopic("/SwerveStates", SwerveModuleState.struct).publish();
-        anglePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngle").publish();
-        anglespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveAngleSetpoints").publish();
-        drivePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveDrive").publish();
-        drivespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/SwerveDriveSetpoints").publish();
+        anglePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/Swerve/Angle/Measured").publish();
+        anglespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/Swerve/Angle/Setpoints").publish();
+        drivePublisher = NetworkTableInstance.getDefault().getDoubleTopic("/Swerve/Drive/Measured").publish();
+        drivespPublisher = NetworkTableInstance.getDefault().getDoubleTopic("/Swerve/Drive/Setpoints").publish();
+        posePublisher = NetworkTableInstance.getDefault().getStructTopic("/Pose", Pose2d.struct).publish();
 
     }
 
@@ -94,6 +97,7 @@ public class SwerveSim extends SwerveBase {
         anglespPublisher.set(modules[0].getAngleSetpoint().getDegrees());
         drivePublisher.set(modules[0].getDriveVelocity());
         drivespPublisher.set(modules[0].getDriveSetpoint());
+        posePublisher.set(swervePoseEstimator.getEstimatedPosition());
 
         updateAllModules();
     }

@@ -59,13 +59,10 @@ public class SwerveBase extends SubsystemBase {
     public SwerveModule[] modules;
     private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
-    private SwerveModulePosition[] lastModulePositions;
-    private Rotation2d rawGyroRotation = new Rotation2d();
     public SwerveDrivePoseEstimator swervePoseEstimator;
 
     public SwerveBase() {
         ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
-        lastModulePositions = new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()};
         swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()}, new Pose2d());
 
         Command trajectory = Choreo.choreoSwerveCommand(
