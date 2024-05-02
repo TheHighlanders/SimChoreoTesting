@@ -62,10 +62,23 @@ public class SwerveBase extends SubsystemBase {
     public SwerveDrivePoseEstimator swervePoseEstimator;
 
     public SwerveBase() {
-        ChoreoTrajectory traj = Choreo.getTrajectory("Trajectory"); //
         swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()}, new Pose2d());
 
-        Command trajectory = Choreo.choreoSwerveCommand(
+        chassisSpeeds = new ChassisSpeeds();
+        // SmartDashboard.putData(field);
+    }
+
+    @Override
+    public void periodic() {
+        if (Constants.diagnosticMode) {
+            sendSmartDashboardDiagnostics();
+        }
+    }
+
+    public Command getTrajectoryCommand(String name){
+        ChoreoTrajectory traj = Choreo.getTrajectory(name); //
+
+        return Choreo.choreoSwerveCommand(
             traj, //
             this::getPose, //
             new PIDController(Constants.AutoConstants.kPXController, 0.0, 0.0), //
@@ -84,16 +97,6 @@ public class SwerveBase extends SubsystemBase {
             }, //
             this //
         );
-
-        chassisSpeeds = new ChassisSpeeds();
-        // SmartDashboard.putData(field);
-    }
-
-    @Override
-    public void periodic() {
-        if (Constants.diagnosticMode) {
-            sendSmartDashboardDiagnostics();
-        }
     }
 
     /**
@@ -107,7 +110,7 @@ public class SwerveBase extends SubsystemBase {
     public void drive(Translation2d translate, Rotation2d rotate, boolean fieldRelative, boolean isOpenLoop) {
         chassisSpeeds =
             fieldRelative
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(-translate.getX(), -translate.getY(), rotate.getRadians(), getYaw())
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(translate.getX(), translate.getY(), rotate.getRadians(), getYaw())
                 : new ChassisSpeeds(translate.getX(), translate.getY(), rotate.getRadians());
 
         SwerveModuleState[] swerveModuleStates = Constants.kinematics.toSwerveModuleStates(chassisSpeeds);

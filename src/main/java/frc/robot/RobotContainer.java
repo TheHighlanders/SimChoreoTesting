@@ -6,7 +6,6 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.commands.SwerveTeleCMD;
@@ -59,14 +58,15 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return new SequentialCommandGroup();
+    return swerve.getTrajectoryCommand("TEST");
   }
+
   public void bindDefaultCommands(){
     swerve.setDefaultCommand(
       new SwerveTeleCMD(
           swerve,
-          () -> driver.getRawAxis(0),
           () -> -driver.getRawAxis(1),
+          () -> -driver.getRawAxis(0),
           () -> driver.getRawAxis(4),
           driver.povDown(),
           driver.leftBumper()
