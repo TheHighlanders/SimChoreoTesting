@@ -4,11 +4,14 @@
 
 package frc.robot.subsystems;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import com.choreo.lib.Choreo;
 import com.choreo.lib.ChoreoTrajectory;
+import com.choreo.lib.ChoreoTrajectoryState;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.controller.PIDController;
@@ -20,12 +23,16 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.Trajectory.State;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Robot;
 import frc.robot.util.SwerveModuleConfig;
 
 public class SwerveBase extends SubsystemBase {
@@ -48,10 +55,8 @@ public class SwerveBase extends SubsystemBase {
         );
 
         private class AutoConstants {
-
-            static double kPXController = 1;
-            static double kPYController = kPXController;
-            static double kPThetaController = 1;
+            static double kPTranslateController = (Robot.isReal() ? 0 : 5);
+            static double kPRotateController = (Robot.isReal() ? 0 : 1);
         }
     }
 
@@ -60,12 +65,21 @@ public class SwerveBase extends SubsystemBase {
     private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
     public SwerveDrivePoseEstimator swervePoseEstimator;
+    private Field2d field;
+    private ChoreoTrajectory traj;
 
     public SwerveBase() {
         swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()}, new Pose2d());
-
+        field = new Field2d();
         chassisSpeeds = new ChassisSpeeds();
-        // SmartDashboard.putData(field);
+        SmartDashboard.putData(field);
+
+        traj = Choreo.getTrajectory("TEST"); //
+        List<State> states = new ArrayList<State>();
+        for(ChoreoTrajectoryState cts : traj.getSamples()){
+            states.add(new State(cts.timestamp, Math.hypot(cts.velocityX, cts.velocityY), 0, new Pose2d(cts.x, cts.y, new Rotation2d(cts.heading)),0));
+        }
+        field.getObject("traj").setTrajectory(new Trajectory(states));
     }
 
     @Override
@@ -75,15 +89,13 @@ public class SwerveBase extends SubsystemBase {
         }
     }
 
-    public Command getTrajectoryCommand(String name){
-        ChoreoTrajectory traj = Choreo.getTrajectory(name); //
-
+    public Command getTrajectoryCommand(){
         return Choreo.choreoSwerveCommand(
             traj, //
             this::getPose, //
-            new PIDController(Constants.AutoConstants.kPXController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPYController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPThetaController, 0.0, 0.0), //
+            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), //
+            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), //
+            new PIDController(Constants.AutoConstants.kPRotateController, 0.0, 0.0), //
             (ChassisSpeeds speeds) -> //
                 this.drive(
                         new Translation2d(-speeds.vxMetersPerSecond, -speeds.vyMetersPerSecond),

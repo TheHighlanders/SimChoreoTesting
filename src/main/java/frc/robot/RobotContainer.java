@@ -58,7 +58,7 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return swerve.getTrajectoryCommand("TEST");
+    return swerve.getTrajectoryCommand();
   }
 
   public void bindDefaultCommands(){
