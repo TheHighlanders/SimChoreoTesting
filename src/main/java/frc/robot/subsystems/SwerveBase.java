@@ -86,10 +86,10 @@ public class SwerveBase extends SubsystemBase {
             new PIDController(Constants.AutoConstants.kPThetaController, 0.0, 0.0), //
             (ChassisSpeeds speeds) -> //
                 this.drive(
-                        new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond),
-                        new Rotation2d(speeds.omegaRadiansPerSecond),
+                        new Translation2d(-speeds.vxMetersPerSecond, -speeds.vyMetersPerSecond),
+                        new Rotation2d(-speeds.omegaRadiansPerSecond),
                         false,
-                        true
+                        false
                     ),
             () -> {
                 Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
