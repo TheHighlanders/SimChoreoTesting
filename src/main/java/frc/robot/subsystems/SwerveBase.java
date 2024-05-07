@@ -73,13 +73,7 @@ public class SwerveBase extends SubsystemBase {
         field = new Field2d();
         chassisSpeeds = new ChassisSpeeds();
         SmartDashboard.putData(field);
-
-        traj = Choreo.getTrajectory("TEST"); //
-        List<State> states = new ArrayList<State>();
-        for(ChoreoTrajectoryState cts : traj.getSamples()){
-            states.add(new State(cts.timestamp, Math.hypot(cts.velocityX, cts.velocityY), 0, new Pose2d(cts.x, cts.y, new Rotation2d(cts.heading)),0));
-        }
-        field.getObject("traj").setTrajectory(new Trajectory(states));
+        field.getObject("traj");
     }
 
     @Override
@@ -89,13 +83,18 @@ public class SwerveBase extends SubsystemBase {
         }
     }
 
-    public Command getTrajectoryCommand(){
+    public Command getTrajectoryCommand(String name){
+        traj = Choreo.getTrajectory(name); // Gets Trajectory from Choreo file
+
+
+        field.getObject("traj").setTrajectory(convertChoreoTrajectoryToWPI(traj));
+
         return Choreo.choreoSwerveCommand(
-            traj, //
-            this::getPose, //
-            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), //
-            new PIDController(Constants.AutoConstants.kPRotateController, 0.0, 0.0), //
+            traj, // Trajectory to run
+            this::getPose, // Supplier to recieve pose
+            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), // PID Controller for Translation in the X direction
+            new PIDController(Constants.AutoConstants.kPTranslateController, 0.0, 0.0), // PID Controller for Translation in the Y Direction
+            new PIDController(Constants.AutoConstants.kPRotateController, 0.0, 0.0), // PID Controller for Rotation
             (ChassisSpeeds speeds) -> //
                 this.drive(
                         new Translation2d(-speeds.vxMetersPerSecond, -speeds.vyMetersPerSecond),
@@ -106,8 +105,8 @@ public class SwerveBase extends SubsystemBase {
             () -> {
                 Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
                 return alliance.isPresent() && alliance.get() == Alliance.Red;
-            }, //
-            this //
+            }, // Boolean Supplier to control Trajectory Mirroring
+            this // Drive Subsystem
         );
     }
 
@@ -302,5 +301,13 @@ public class SwerveBase extends SubsystemBase {
 
     public void jogAllModuleDrive(double v) {
         drive(new Translation2d(0, v), new Rotation2d(0), true, false);
+    }
+
+    private Trajectory convertChoreoTrajectoryToWPI(ChoreoTrajectory traj){
+                List<State> states = new ArrayList<State>();
+        for(ChoreoTrajectoryState cts : traj.getSamples()){
+            states.add(new State(cts.timestamp, Math.hypot(cts.velocityX, cts.velocityY), 0, new Pose2d(cts.x, cts.y, new Rotation2d(cts.heading)),0));
+        }
+        return new Trajectory(states);
     }
 }
