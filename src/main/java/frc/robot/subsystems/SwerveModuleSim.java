@@ -1,8 +1,5 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.SparkAbsoluteEncoder;
-import com.revrobotics.SparkPIDController;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
@@ -13,7 +10,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
-public class SwerveModuleSim{
+public class SwerveModuleSim extends SwerveModule{
     public class Constants{
         static double kSDrive = 6.5;
         static double kVDrive = 0.5;
@@ -49,11 +46,6 @@ public class SwerveModuleSim{
     private DCMotorSim driveMotor;
 
     public int moduleNumber;
-
-    public SparkPIDController driveController;
-    public SparkPIDController angleController;
-
-    public SparkAbsoluteEncoder absoluteEncoder;
     
     public PIDController drivePID = new PIDController(Constants.kPDrive, Constants.kIDrive, Constants.kDDrive);
     public PIDController anglePID = new PIDController(Constants.kPAngle, Constants.kIAngle, Constants.kDAngle);
@@ -141,5 +133,9 @@ public class SwerveModuleSim{
      */
     public int getModuleNumber() {
         return moduleNumber;
+    }
+
+    public SwerveModuleState getSetpoint(){
+        return new SwerveModuleState(drivePID.getSetpoint(), Rotation2d.fromDegrees(anglePID.getSetpoint()));
     }
 }

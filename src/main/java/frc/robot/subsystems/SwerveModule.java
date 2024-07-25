@@ -67,7 +67,8 @@ public class SwerveModule {
 
     private Rotation2d KModuleAbsoluteOffset;
 
-    // private Rotation2d lastAngle;
+    public SwerveModule(){}
+
     public SwerveModule(int moduleNumber, SwerveModuleConfig config) {
         this.moduleNumber = moduleNumber;
 
@@ -286,5 +287,14 @@ public class SwerveModule {
      */
     public void setIntegratedAngleToAbsolute() {
         angleEncoder.setPosition(getAbsolutePosition().getDegrees());
+    }
+
+    public void updateModule(){
+        //No-op here, so Sim Module can extend seamlessly
+        // This is bad, not sure of proper way
+    }
+
+    public SwerveModuleState getSetpoint(){
+        return new SwerveModuleState(driveReference, Rotation2d.fromDegrees(angleReference)); 
     }
 }

@@ -20,7 +20,6 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Robot;
 import frc.robot.util.SwerveModuleConfig;
 
 public class Swerve extends SwerveBase {
@@ -125,9 +124,8 @@ public class Swerve extends SwerveBase {
      * @return Yaw of gyro, includes zeroing
      */
     public Rotation2d getYaw() {
-        if(Robot.isReal()){
-            return Rotation2d.fromDegrees(-1 * gyro.getYaw());
-        } else return new Rotation2d(); //TODO: FIX THIS
+        return Rotation2d.fromDegrees(-1 * gyro.getYaw());
+        
     }
 
     /**
@@ -236,7 +234,7 @@ public class Swerve extends SwerveBase {
         }
     }
 
-    public void sendSmartDashboardDiagnostics() {
+    public void sendDiagnostics() {
         sendAngleDiagnostic();
         sendAngleTargetDiagnostic();
 

@@ -5,14 +5,12 @@
 package frc.robot.subsystems;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import com.choreo.lib.Choreo;
 import com.choreo.lib.ChoreoTrajectory;
 import com.choreo.lib.ChoreoTrajectoryState;
-import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
@@ -26,6 +24,9 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.Trajectory.State;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructArrayPublisher;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -62,11 +63,14 @@ public class SwerveBase extends SubsystemBase {
 
     /* Array of Modules */
     public SwerveModule[] modules;
-    private AHRS gyro;
     public ChassisSpeeds chassisSpeeds;
     public SwerveDrivePoseEstimator swervePoseEstimator;
     private Field2d field;
     private ChoreoTrajectory traj;
+    private StructArrayPublisher<SwerveModuleState> statePublisher;
+    private StructArrayPublisher<SwerveModuleState> setpointPublisher;
+    private StructPublisher<Pose2d> posePublisher;
+
 
     public SwerveBase() {
         swervePoseEstimator = new SwerveDrivePoseEstimator(Constants.kinematics, new Rotation2d(), new SwerveModulePosition[]{new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition(),new SwerveModulePosition()}, new Pose2d());
@@ -74,13 +78,19 @@ public class SwerveBase extends SubsystemBase {
         chassisSpeeds = new ChassisSpeeds();
         SmartDashboard.putData(field);
         field.getObject("traj");
+
+        statePublisher = NetworkTableInstance.getDefault().getStructArrayTopic("/Swerve/States", SwerveModuleState.struct).publish();        
+        setpointPublisher = NetworkTableInstance.getDefault().getStructArrayTopic("/Swerve/Setpoints", SwerveModuleState.struct).publish();
+        posePublisher = NetworkTableInstance.getDefault().getStructTopic("/Swerve/Odometer", Pose2d.struct).publish();
     }
 
     @Override
     public void periodic() {
         if (Constants.diagnosticMode) {
-            sendSmartDashboardDiagnostics();
+            sendDiagnostics();
         }
+        field.setRobotPose(swervePoseEstimator.getEstimatedPosition());
+        posePublisher.set(swervePoseEstimator.getEstimatedPosition());
     }
 
     public Command getTrajectoryCommand(String name){
@@ -128,9 +138,7 @@ public class SwerveBase extends SubsystemBase {
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.kMaxSpeed);
 
-        for (SwerveModule m : modules) {
-            m.setModuleState(swerveModuleStates[m.moduleNumber], isOpenLoop); //WHY WHY WHY
-        }
+        setModuleStates(swerveModuleStates, isOpenLoop);
     }
 
     public void driveRobotRelative(ChassisSpeeds chassisSpeeds) {
@@ -140,23 +148,19 @@ public class SwerveBase extends SubsystemBase {
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, Constants.kMaxSpeed);
 
-        for (SwerveModule m : modules) {
-            m.setModuleState(swerveModuleStates[m.moduleNumber], true);
+        setModuleStates(swerveModuleStates, true);
+    }
+
+
+    public void setModuleStates(SwerveModuleState[] states, boolean isOpenLoop){
+        for(SwerveModule m : modules){
+            m.setModuleState(states[m.moduleNumber], isOpenLoop);
         }
     }
+    
 
-    /**
-     * Zeros the NavX
-     */
-    public void zeroGyro() {
-        gyro.zeroYaw();
-    }
-
-    // For PP
     public void resetPose(Pose2d pose) {
         swervePoseEstimator.resetPosition(getYaw(), getModulePositions(), pose);
-        // SmartDashboard.putNumber("ResetPoseX", pose.getX());
-        // SmartDashboard.putNumber("ResetPoseY", pose.getY());
     }
 
     /**
@@ -165,7 +169,8 @@ public class SwerveBase extends SubsystemBase {
      * @return Yaw of gyro, includes zeroing
      */
     public Rotation2d getYaw() {
-        return new Rotation2d(); //TODO: FIX THIS
+        System.out.println("Parent Swerve Base Used: Should be Sim or Real, not parent");
+        return new Rotation2d();
     }
 
     /**
@@ -183,17 +188,10 @@ public class SwerveBase extends SubsystemBase {
     }
 
     public Pose2d getPose() {
-        // return new Pose2d(odometer.getPoseMeters().getTranslation(), new Rotation2d());
-        // return odometer.getPoseMeters();
-        // return swervePoseEstimator.getEstimatedPosition();
         return swervePoseEstimator.getEstimatedPosition();
     }
 
     public ChassisSpeeds getRobotRelativeSpeeds() {
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsX", Constants.SwerveConst.kinematics.toChassisSpeeds(getStates()).vxMetersPerSecond);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsY", Constants.SwerveConst.kinematics.toChassisSpeeds(getStates()).vyMetersPerSecond);
-        // SmartDashboard.putNumber("getRobotRelativeSpeedsO", Constants.SwerveConst.kinematics.toChassisSpeeds(getStates()).omegaRadiansPerSecond);
-
         return Constants.kinematics.toChassisSpeeds(getStates());
     }
 
@@ -210,6 +208,14 @@ public class SwerveBase extends SubsystemBase {
         return states;
     }
 
+    public SwerveModuleState[] getSetpoints(){
+        SwerveModuleState[] setpoints = new SwerveModuleState[modules.length];
+        for(SwerveModule m : modules){
+            setpoints[m.moduleNumber] = m.getSetpoint();
+        }
+        return setpoints;
+    }
+
     public void resetAllModulestoAbsol() {
         for (SwerveModule m : modules) {
             m.setIntegratedAngleToAbsolute();
@@ -223,70 +229,9 @@ public class SwerveBase extends SubsystemBase {
         }
     }
 
-    /**
-     *  Sends actual angle encoder data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendAngleTargetDiagnostic()
-     */
-    public void sendAngleDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Angle Actual", m.angleEncoder.getPosition());
-        }
-    }
-
-    /**
-     *  Sends angle PID target data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendAngleDiagnostic()
-     */
-    public void sendAngleTargetDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Angle Target", m.angleReference);
-        }
-    }
-
-    /**
-     *  Sends actual drive encoder data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendDriveTargetDiagnostic()
-     */
-    public void sendDriveDiagnostic() {
-        double[] wheelSpeeds = new double[4];
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Position Drive Actual", m.driveEncoder.getPosition());
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Velocity Actual", m.driveEncoder.getVelocity());
-            wheelSpeeds[m.driveMotor.getDeviceId() / 10] = m.driveEncoder.getVelocity();
-        }
-
-        SmartDashboard.putNumber(
-            "Velocity Range",
-            Math.abs(Arrays.stream(wheelSpeeds).max().getAsDouble()) - Math.abs(Arrays.stream(wheelSpeeds).min().getAsDouble())
-        );
-    }
-
-    /**
-     *  Sends drive PID target data to SmartDashboard, paired with module number (drive motor ID), for use in debuging w/ sendDriveDiagnostic()
-     */
-    public void sendDriveTargetDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Velocity Target", m.driveReference);
-        }
-    }
-
-    public void sendAbsoluteDiagnostic() {
-        for (SwerveModule m : modules) {
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Absolute", m.getAbsolutePositionNoOffset().getDegrees());
-            SmartDashboard.putNumber("Module " + m.driveMotor.getDeviceId() / 10 + " Absolute Offsetted", m.getAbsolutePosition().getDegrees());
-        }
-    }
-
-    public void sendSmartDashboardDiagnostics() {
-        sendAngleDiagnostic();
-        sendAngleTargetDiagnostic();
-
-        sendDriveDiagnostic();
-        // sendDriveTargetDiagnostic();
-
-        sendAbsoluteDiagnostic();
-
-        SmartDashboard.putNumber("NavX Angle", getYaw().getDegrees());
-        SmartDashboard.putNumber("Pose X", getPose().getX());
-        SmartDashboard.putNumber("Pose Y", getPose().getY());
-        SmartDashboard.putNumber("Pose Theta", getPose().getRotation().getDegrees());
+    public void sendDiagnostics() {
+        statePublisher.set(getStates());
+        setpointPublisher.set(getSetpoints());
     }
 
     public void jogSingleModule(int moduleNumber, double input, boolean drive) {

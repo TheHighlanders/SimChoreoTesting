@@ -12,6 +12,7 @@ import frc.robot.commands.SwerveTeleCMD;
 import frc.robot.subsystems.Swerve;
 import frc.robot.subsystems.SwerveBase;
 import frc.robot.subsystems.SwerveSim;
+import frc.robot.subsystems.Vision;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -22,6 +23,7 @@ import frc.robot.subsystems.SwerveSim;
 
 public class RobotContainer {
   public SwerveBase swerve;
+  public Vision vision;
   public CommandXboxController driver = new CommandXboxController(0);
   // The robot's subsystems and commands are defined here...
 
@@ -34,6 +36,7 @@ public class RobotContainer {
     } else {
       swerve = new SwerveSim();
     }
+    vision = new Vision(swerve);
     bindDefaultCommands();
 
   }
